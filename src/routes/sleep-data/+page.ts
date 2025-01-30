@@ -3,10 +3,16 @@ import { error } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ fetch }) => {
 	try {
-		const months = ['2024-07', '2024-08', '2024-09', '2024-10', '2024-11', '2024-12', '2025-01'];
+		const months: string[] = Object.values(
+			import.meta.glob('/src/data/monthlySleepRecords/*.json', {
+				eager: true,
+				query: '?url',
+				import: 'default'
+			})
+		);
 		const allData = await Promise.all(
 			months.map(async (month) => {
-				const response = await fetch(`/src/data/History/${month}.json`);
+				const response = await fetch(month);
 				if (!response.ok) {
 					throw new Error(`Failed to load data for ${month}`);
 				}
