@@ -1,23 +1,23 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @layer base {
-	h1 {
-		font-size: var(--text-2xl);
-		font-weight: 600;
-	}
-	h2 {
-		font-size: var(--text-xl);
-		font-weight: 600;
-	}
-	p {
-		font-weight: 400;
-		margin-bottom: 0.5rem;
-	}
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+  }
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+  }
+  p {
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+  }
 }
 
 @theme {
-	--color-hours: #1788c3;
-	--color-mask: #ed6937;
-	--color-score: #ffc344;
-	--color-seal: #6e308f;
+  --color-hours: #1788c3;
+  --color-mask: #ed6937;
+  --color-score: #ffc344;
+  --color-seal: #6e308f;
 }
