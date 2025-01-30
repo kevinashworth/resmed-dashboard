@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+@theme {
+	--color-hours: #1788c3;
+	--color-mask: #ed6937;
+	--color-score: #ffc344;
+	--color-seal: #6e308f;
+}
