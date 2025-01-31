@@ -16,6 +16,7 @@
 }
 
 @theme {
+  --color-events: #da1f3d;
   --color-hours: #1788c3;
   --color-mask: #ed6937;
   --color-score: #ffc344;

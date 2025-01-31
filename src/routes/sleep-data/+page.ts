@@ -2,6 +2,7 @@ import type { PageLoad } from "./$types";
 import { error } from "@sveltejs/kit";
 
 export const load: PageLoad = async ({ fetch }) => {
+  let loading = true;
   try {
     const months: string[] = Object.values(
       import.meta.glob("/src/data/monthlySleepRecords/*.json", {
@@ -18,66 +19,63 @@ export const load: PageLoad = async ({ fetch }) => {
         }
         return response.json();
       }),
-    );
+    ).finally(() => (loading = false));
 
     const combinedData = allData.flatMap((monthData) => monthData.data.getPatientWrapper.sleepRecords.items);
+
+    const oldestDate = new Date(combinedData[0].startDate);
+    const newestDate = new Date(combinedData[combinedData.length - 1].startDate);
 
     // Transform data for the chart
     const chartData = combinedData.flatMap((record) => [
       {
-        group: "Leak Percentile",
+        group: "Events",
+        date: new Date(record.startDate),
+        value: record.ahi,
+      },
+      {
+        group: "Mask Seal",
         date: new Date(record.startDate),
         value: record.leakPercentile,
       },
       {
-        group: "Leak Score",
-        date: new Date(record.startDate),
-        value: record.leakScore,
-      },
-      {
-        group: "Mask Pair Count",
+        group: "Mask On/Off",
         date: new Date(record.startDate),
         value: record.maskPairCount,
       },
       {
-        group: "Mask Score",
-        date: new Date(record.startDate),
-        value: record.maskScore,
-      },
-      {
-        group: "Sleep Score",
+        group: "myAir Score",
         date: new Date(record.startDate),
         value: record.sleepScore,
       },
       {
-        group: "Total Usage",
+        group: "Usage Hours",
         date: new Date(record.startDate),
         value: record.totalUsage,
       },
-      {
-        group: "Usage Score",
-        date: new Date(record.startDate),
-        value: record.usageScore,
-      },
     ]);
 
-    const leakPercentileData = chartData.filter((item) => item.group === "Leak Percentile");
-    const leakScoreData = chartData.filter((item) => item.group === "Leak Score");
-    const maskPairCountData = chartData.filter((item) => item.group === "Mask Pair Count");
-    const maskScoreData = chartData.filter((item) => item.group === "Mask Score");
-    const sleepScoreData = chartData.filter((item) => item.group === "Sleep Score");
-    const totalUsageData = chartData.filter((item) => item.group === "Total Usage");
-    const usageScoreData = chartData.filter((item) => item.group === "Usage Score");
+    const eventsData = chartData.filter((item) => item.group === "Events");
+    const leakPercentileData = chartData.filter((item) => item.group === "Mask Seal");
+    const maskPairCountData = chartData.filter((item) => item.group === "Mask On/Off");
+    const sleepScoreData = chartData.filter((item) => item.group === "myAir Score");
+    const totalUsageData = chartData.filter((item) => item.group === "Usage Hours");
 
     return {
-      sleepData: chartData,
+      loading,
+      loadingError:
+        eventsData.length === 0 &&
+        leakPercentileData.length === 0 &&
+        maskPairCountData.length === 0 &&
+        sleepScoreData.length === 0 &&
+        totalUsageData.length === 0,
+      oldestDate,
+      newestDate,
+      eventsData,
       leakPercentileData,
-      leakScoreData,
       maskPairCountData,
-      maskScoreData,
       sleepScoreData,
       totalUsageData,
-      usageScoreData,
     };
   } catch (err) {
     console.error("Error loading sleep data:", err);

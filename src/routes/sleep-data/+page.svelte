@@ -10,21 +10,21 @@
   let { data }: PageProps = $props();
 
   // Date range control
-  let selectedPreset = $state("last60");
+  let selectedPreset = $state("allTime");
   let startDate = $state("");
   let endDate = $state("");
 
   // Chart visibility states
+  let eventsVisible = $state(true);
   let leakPercentileVisible = $state(true);
-  let leakScoreVisible = $state(false);
   let maskPairCountVisible = $state(true);
-  let maskScoreVisible = $state(false);
   let sleepScoreVisible = $state(true);
   let totalUsageVisible = $state(true);
-  let usageScoreVisible = $state(false);
 
   // Initialize and update dates based on preset
   $effect(() => {
+    startDate = data.oldestDate.toISOString().split("T")[0];
+    endDate = data.newestDate.toISOString().split("T")[0];
     const now = new Date();
     if (selectedPreset === "last30") {
       const thirtyDaysAgo = new Date(now);
@@ -47,9 +47,8 @@
       startDate = firstDayLastMonth.toISOString().split("T")[0];
       endDate = lastDayLastMonth.toISOString().split("T")[0];
     } else if (selectedPreset === "allTime") {
-      const julyFirst2024 = new Date(2024, 6, 1);
-      startDate = julyFirst2024.toISOString().split("T")[0];
-      endDate = now.toISOString().split("T")[0];
+      startDate = data.oldestDate.toISOString().split("T")[0];
+    endDate = data.newestDate.toISOString().split("T")[0];
     }
   });
 
@@ -59,18 +58,19 @@
     return date >= new Date(startDate) && date <= new Date(endDate);
   };
   const filteredData = $derived({
+    eventsData: data.eventsData.filter(dateFilter),
     leakPercentileData: data.leakPercentileData.filter(dateFilter),
-    leakScoreData: data.leakScoreData.filter(dateFilter),
     maskPairCountData: data.maskPairCountData.filter(dateFilter),
-    maskScoreData: data.maskScoreData.filter(dateFilter),
     sleepScoreData: data.sleepScoreData.filter(dateFilter),
     totalUsageData: data.totalUsageData.filter(dateFilter),
-    usageScoreData: data.usageScoreData.filter(dateFilter),
   });
 
   function handleCustomDateChange() {
     selectedPreset = "custom";
   }
+
+  let renderContext: "svg" | "canvas" = "svg";
+  let debug = false;
 </script>
 
 <div class="p-4">
@@ -117,47 +117,11 @@
     </div>
   </div>
 
-  {#if data.sleepData.length > 0}
+  {#if data.loadingError}
+    <div>No sleep data available.</div>
+  {:else}
     <div class="mx-auto flex flex-col gap-4">
-      <!-- MYAIR SCORE Chart // sleepScore is MYAIR SCORE -->
-      <div class="rounded border p-4">
-        <div class="mb-2 flex items-center justify-start">
-          <h2 class="text-score text-lg font-semibold uppercase">myAir Score</h2>
-          <button
-            class="px-2 py-1 text-sm text-gray-600 hover:text-gray-800"
-            onclick={() => (sleepScoreVisible = !sleepScoreVisible)}
-          >
-            {sleepScoreVisible ? "▼ Collapse" : "▶ Expand"}
-          </button>
-        </div>
-        {#if sleepScoreVisible}
-          <div class="h-[300px]">
-            <Chart
-              data={filteredData.sleepScoreData}
-              x="date"
-              xScale={scaleBand().padding(0.4)}
-              y="value"
-              yDomain={[0, null]}
-              padding={{ left: 16, bottom: 24 }}
-            >
-              <Svg>
-                <Axis placement="left" grid rule />
-                <Axis
-                  placement="bottom"
-                  format={(d) => {
-                    const date = new Date(d);
-                    return date.getDay() === 0 ? format(d, PeriodType.Day, { variant: "short" }) : "";
-                  }}
-                  rule
-                />
-                <Bars radius={4} rounded="top" class="fill-score" />
-              </Svg>
-            </Chart>
-          </div>
-        {/if}
-      </div>
-
-      <!-- USAGE HOURS Chart // totalUsage is USAGE HOURS -->
+      <!-- 1. USAGE HOURS Chart // totalUsage is USAGE HOURS -->
       <div class="rounded border p-4">
         <div class="mb-2 flex items-center justify-start">
           <h2 class="text-hours text-lg font-semibold uppercase">Usage Hours</h2>
@@ -175,8 +139,7 @@
               x="date"
               xScale={scaleBand().padding(0.4)}
               y="value"
-              yDomain={[0, 600]}
-              yScale={scaleTime()}
+              yDomain={[0, null]}
               padding={{ left: 16, bottom: 24 }}
               tooltip={{ mode: "band" }}
               let:width
@@ -184,7 +147,7 @@
             >
               {@const avg = mean(filteredData.totalUsageData, (d) => d.value)}
               <Svg>
-                <Axis placement="left" format={(d) => `${Math.floor(d / 60)}h ${d % 60}m`} grid rule />
+                <Axis placement="left" format={(d) => `${Math.floor(d / 60)}h ${d % 60}m`} grid rule label="Hours" />
                 <Axis
                   placement="bottom"
                   format={(d) => {
@@ -221,21 +184,21 @@
         {/if}
       </div>
 
-      <!-- Usage Score Chart -->
+      <!-- 2. MASK SEAL Chart // leakPercentile is MASK SEAL // -->
       <div class="rounded border p-4">
         <div class="mb-2 flex items-center justify-start">
-          <h2 class="text-lg font-semibold">Usage Score</h2>
+          <h2 class="text-seal text-lg font-semibold uppercase">Mask Seal</h2>
           <button
             class="px-2 py-1 text-sm text-gray-600 hover:text-gray-800"
-            onclick={() => (usageScoreVisible = !usageScoreVisible)}
+            onclick={() => (leakPercentileVisible = !leakPercentileVisible)}
           >
-            {usageScoreVisible ? "▼ Collapse" : "▶ Expand"}
+            {leakPercentileVisible ? "▼ Collapse" : "▶ Expand"}
           </button>
         </div>
-        {#if usageScoreVisible}
+        {#if leakPercentileVisible}
           <div class="h-[300px]">
             <Chart
-              data={filteredData.usageScoreData}
+              data={filteredData.leakPercentileData}
               x="date"
               xScale={scaleBand().padding(0.4)}
               y="value"
@@ -252,28 +215,28 @@
                   }}
                   rule
                 />
-                <Bars radius={4} rounded="top" class="fill-green-500" />
+                <Bars radius={4} rounded="top" class="fill-seal" />
               </Svg>
             </Chart>
           </div>
         {/if}
       </div>
 
-      <!-- Mask Score Chart -->
+      <!-- 3. EVENTS Chart // events is EVENTS //   -->
       <div class="rounded border p-4">
         <div class="mb-2 flex items-center justify-start">
-          <h2 class="text-lg font-semibold">Mask Score</h2>
+          <h2 class="text-events text-lg font-semibold uppercase">Events</h2>
           <button
             class="px-2 py-1 text-sm text-gray-600 hover:text-gray-800"
-            onclick={() => (maskScoreVisible = !maskScoreVisible)}
+            onclick={() => (eventsVisible = !eventsVisible)}
           >
-            {maskScoreVisible ? "▼ Collapse" : "▶ Expand"}
+            {eventsVisible ? "▼ Collapse" : "▶ Expand"}
           </button>
         </div>
-        {#if maskScoreVisible}
+        {#if eventsVisible}
           <div class="h-[300px]">
             <Chart
-              data={filteredData.maskScoreData}
+              data={filteredData.eventsData}
               x="date"
               xScale={scaleBand().padding(0.4)}
               y="value"
@@ -290,14 +253,14 @@
                   }}
                   rule
                 />
-                <Bars radius={4} rounded="top" class="fill-yellow-500" />
+                <Bars radius={4} rounded="top" class="fill-events" />
               </Svg>
             </Chart>
           </div>
         {/if}
       </div>
 
-      <!-- MASK ON/OFF Chart // maskPairCount is MASK ON/OFF -->
+      <!-- 4. MASK ON/OFF Chart // maskPairCount is MASK ON/OFF -->
       <div class="rounded border p-4">
         <div class="mb-2 flex items-center justify-start">
           <h2 class="text-mask text-lg font-semibold uppercase">Mask On/Off</h2>
@@ -343,21 +306,21 @@
         {/if}
       </div>
 
-      <!-- Leak Score Chart -->
+      <!--5. MYAIR SCORE Chart // sleepScore is MYAIR SCORE -->
       <div class="rounded border p-4">
         <div class="mb-2 flex items-center justify-start">
-          <h2 class="text-lg font-semibold">Leak Score</h2>
+          <h2 class="text-score text-lg font-semibold uppercase">myAir Score</h2>
           <button
             class="px-2 py-1 text-sm text-gray-600 hover:text-gray-800"
-            onclick={() => (leakScoreVisible = !leakScoreVisible)}
+            onclick={() => (sleepScoreVisible = !sleepScoreVisible)}
           >
-            {leakScoreVisible ? "▼ Collapse" : "▶ Expand"}
+            {sleepScoreVisible ? "▼ Collapse" : "▶ Expand"}
           </button>
         </div>
-        {#if leakScoreVisible}
+        {#if sleepScoreVisible}
           <div class="h-[300px]">
             <Chart
-              data={filteredData.leakScoreData}
+              data={filteredData.sleepScoreData}
               x="date"
               xScale={scaleBand().padding(0.4)}
               y="value"
@@ -365,7 +328,7 @@
               padding={{ left: 16, bottom: 24 }}
             >
               <Svg>
-                <Axis placement="left" grid rule />
+                <Axis placement="left" grid rule label="MYAIR Score" />
                 <Axis
                   placement="bottom"
                   format={(d) => {
@@ -374,52 +337,12 @@
                   }}
                   rule
                 />
-                <Bars radius={4} rounded="top" class="fill-red-500" />
-              </Svg>
-            </Chart>
-          </div>
-        {/if}
-      </div>
-
-      <!-- MASK SEAL Chart // leakPercentile is MASK SEAL // -->
-      <div class="rounded border p-4">
-        <div class="mb-2 flex items-center justify-start">
-          <h2 class="text-seal text-lg font-semibold uppercase">Mask Seal</h2>
-          <button
-            class="px-2 py-1 text-sm text-gray-600 hover:text-gray-800"
-            onclick={() => (leakPercentileVisible = !leakPercentileVisible)}
-          >
-            {leakPercentileVisible ? "▼ Collapse" : "▶ Expand"}
-          </button>
-        </div>
-        {#if leakPercentileVisible}
-          <div class="h-[300px]">
-            <Chart
-              data={filteredData.leakPercentileData}
-              x="date"
-              xScale={scaleBand().padding(0.4)}
-              y="value"
-              yDomain={[0, null]}
-              padding={{ left: 16, bottom: 24 }}
-            >
-              <Svg>
-                <Axis placement="left" grid rule />
-                <Axis
-                  placement="bottom"
-                  format={(d) => {
-                    const date = new Date(d);
-                    return date.getDay() === 0 ? format(d, PeriodType.Day, { variant: "short" }) : "";
-                  }}
-                  rule
-                />
-                <Bars radius={4} rounded="top" class="fill-seal" />
+                <Bars radius={4} rounded="top" class="fill-score" />
               </Svg>
             </Chart>
           </div>
         {/if}
       </div>
     </div>
-  {:else}
-    <p>No sleep data available.</p>
   {/if}
 </div>
