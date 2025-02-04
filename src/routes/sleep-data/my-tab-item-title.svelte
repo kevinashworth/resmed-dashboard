@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { Component } from "svelte";
-  import AhiEventsIcon from "./ahi-events.svelte";
-  import MaskLeakIcon from "./mask-leak.svelte";
-  import MaskOnOffIcon from "./mask-on-off.svelte";
-  import SleepScoreIcon from "./sleep-score.svelte";
-  import UsageHoursIcon from "./usage-hours.svelte";
+  import AhiEventsIcon from "./icons/ahi-events.svelte";
+  import MaskLeakIcon from "./icons/mask-leak.svelte";
+  import MaskOnOffIcon from "./icons/mask-on-off.svelte";
+  import SleepScoreIcon from "./icons/sleep-score.svelte";
+  import UsageHoursIcon from "./icons/usage-hours.svelte";
 
   type IconNames = "events" | "hours" | "leak" | "mask" | "score";
 
@@ -26,17 +26,6 @@
     score: "fill-score",
   };
 
-  type TextClassMap = {
-    [key: string]: string;
-  };
-  let textClass: TextClassMap = {
-    events: "text-events",
-    hours: "text-hours",
-    leak: "text-seal",
-    mask: "text-mask",
-    score: "text-score",
-  };
-
   type IconComponentMap = {
     [key: string]: Component; // Use IconNames as the keys
   };
@@ -51,8 +40,8 @@
 </script>
 
 <div class="flex flex-col items-center justify-start">
-  <IconComponent class={[fillClass[name], "size-14"]} />
-  <h2 class="in-[.active]:{textClass[name]} text-xs font-medium whitespace-nowrap text-gray-500 uppercase">
+  <IconComponent class={[fillClass[name], "size-12"]} />
+  <h2 class="text-xs font-medium whitespace-nowrap text-gray-500 uppercase">
     {title}
   </h2>
   <div class="h-0 w-32 bg-white in-[.active]:bg-gray-50"></div>
