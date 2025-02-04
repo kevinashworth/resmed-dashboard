@@ -1,0 +1,44 @@
+{
+  "data": {
+    "getPatientWrapper": {
+      "patient": {
+        "id": "1234567890",
+        "__typename": "Patient"
+      },
+      "sleepRecords": {
+        "items": [
+          {
+            "startDate": "2025-02-01",
+            "totalUsage": 228,
+            "sleepScore": 63,
+            "usageScore": 38,
+            "ahiScore": 5,
+            "maskScore": 5,
+            "leakScore": 15,
+            "ahi": 0.2,
+            "maskPairCount": 2,
+            "leakPercentile": 25.2,
+            "sleepRecordPatientId": "1234567890",
+            "__typename": "SleepRecord"
+          },
+          {
+            "startDate": "2025-02-02",
+            "totalUsage": 426,
+            "sleepScore": 95,
+            "usageScore": 70,
+            "ahiScore": 5,
+            "maskScore": 5,
+            "leakScore": 15,
+            "ahi": 1.1,
+            "maskPairCount": 1,
+            "leakPercentile": 26.4,
+            "sleepRecordPatientId": "1234567890",
+            "__typename": "SleepRecord"
+          }
+        ],
+        "__typename": "PaginatedSleepRecords"
+      },
+      "__typename": "PatientWrapper"
+    }
+  }
+}
