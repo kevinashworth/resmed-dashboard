@@ -56,10 +56,10 @@ export function fahrenheitToCelsius(temperature: number) {
 
 /** Parse percent string (`50%`) to decimal (`0.5`) */
 export function parsePercent(percent: string | number) {
-  if (typeof percent === 'number') {
+  if (typeof percent === "number") {
     // Assume already decimal
     return percent;
   } else {
-    return Number(percent.replace('%', '')) / 100;
+    return Number(percent.replace("%", "")) / 100;
   }
 }

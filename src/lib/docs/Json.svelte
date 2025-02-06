@@ -1,12 +1,12 @@
 <script lang="ts">
-  import JsonTree from 'svelte-json-tree';
-  import { cls } from '@layerstack/tailwind';
+  import JsonTree from "svelte-json-tree";
+  import { cls } from "@layerstack/tailwind";
 
   export let value: any;
-  export let defaultExpandedPaths = ['$'];
+  export let defaultExpandedPaths = ["$"];
 </script>
 
-<div class={cls('overflow-auto px-4 py-2 bg-[#1e1e1e]', $$props.class)}>
+<div class={cls("overflow-auto bg-[#1e1e1e] px-4 py-2", $$props.class)}>
   <JsonTree
     {value}
     {defaultExpandedPaths}

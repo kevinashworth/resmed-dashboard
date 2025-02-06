@@ -1,20 +1,20 @@
 <script lang="ts">
-  import { slide } from 'svelte/transition';
+  import { slide } from "svelte/transition";
   // TODO: No longer copy from svelte-ux after prismjs is migrated to ESM (commonjs causes issue with Vite from another library)
-  import Prism from 'prismjs';
-  import 'prism-svelte';
-  import { mdiCodeTags, mdiTable } from '@mdi/js';
+  import Prism from "prismjs";
+  import "prism-svelte";
+  import { mdiCodeTags, mdiTable } from "@mdi/js";
 
-  import { Button, CopyButton, Dialog, Toggle, Tooltip } from 'svelte-ux';
-  import { cls } from '@layerstack/tailwind';
+  import { Button, CopyButton, Dialog, Toggle, Tooltip } from "svelte-ux";
+  import { cls } from "@layerstack/tailwind";
 
-  import Code from './Code.svelte';
-  import Json from './Json.svelte';
+  import Code from "./Code.svelte";
+  import Json from "./Json.svelte";
 
   export let code: string | undefined = undefined;
   export let data: any | undefined = undefined;
-  export let language = 'svelte';
-  export let highlightedCode = code ? Prism.highlight(code, Prism.languages.svelte, language) : '';
+  export let language = "svelte";
+  export let highlightedCode = code ? Prism.highlight(code, Prism.languages.svelte, language) : "";
   export let showCode = false;
 
   /**
@@ -33,46 +33,41 @@
     try {
       // Regular expression to match quoted instantiation (ex. `"new Date(...)"`) and stripe the quotes  (`new Date(...)`)
       const datePattern = /"(new \w+\([^)]*\))"/g;
-      return JSON.stringify(_data, replacer, 2).replace(datePattern, '$1');
+      return JSON.stringify(_data, replacer, 2).replace(datePattern, "$1");
     } catch (e) {
-      console.error('Error capturing value to copy', e);
-      return '';
+      console.error("Error capturing value to copy", e);
+      return "";
     }
   }
 </script>
 
-<div class={cls('Preview border rounded bg-surface-100', $$props.class)}>
+<div class={cls("Preview bg-surface-100 rounded border", $$props.class)}>
   <div class="p-4">
     <slot />
   </div>
 
   {#if code && showCode}
     <div transition:slide class="bg-surface-200">
-      <Code source={code} highlightedSource={highlightedCode} classes={{ pre: 'rounded-t-none' }} />
+      <Code source={code} highlightedSource={highlightedCode} classes={{ pre: "rounded-t-none" }} />
     </div>
   {/if}
 </div>
 
 {#if code}
-  <Button
-    icon={mdiCodeTags}
-    class="text-surface-content/70 py-1"
-    on:click={() => (showCode = !showCode)}
-  >
-    {showCode ? 'Hide' : 'Show'} Code
+  <Button icon={mdiCodeTags} class="text-surface-content/70 py-1" on:click={() => (showCode = !showCode)}>
+    {showCode ? "Hide" : "Show"} Code
   </Button>
 {/if}
 
 {#if data}
   <Toggle let:on={open} let:toggle let:toggleOff>
-    <Button icon={mdiTable} class="text-surface-content/70 py-1" on:click={toggle}>View data</Button
-    >
+    <Button icon={mdiTable} class="text-surface-content/70 py-1" on:click={toggle}>View data</Button>
     <Dialog
       {open}
       on:close={toggleOff}
-      class="max-h-[98dvh] md:max-h-[90dvh] max-w-[98vw] md:max-w-[90vw] grid grid-rows-[auto,1fr,auto]"
+      class="grid max-h-[98dvh] max-w-[98vw] grid-rows-[auto,1fr,auto] md:max-h-[90dvh] md:max-w-[90vw]"
     >
-      <div class="grid grid-cols-[1fr,auto] gap-3 items-center p-4">
+      <div class="grid grid-cols-[1fr,auto] items-center gap-3 p-4">
         <div class="overflow-auto">
           <div class="text-lg font-semibold">Chart data</div>
         </div>

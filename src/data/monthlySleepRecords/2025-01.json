@@ -429,15 +429,15 @@
           },
           {
             "startDate": "2025-01-31",
-            "totalUsage": 64,
-            "sleepScore": 41,
-            "usageScore": 11,
+            "totalUsage": 557,
+            "sleepScore": 99,
+            "usageScore": 70,
             "ahiScore": 5,
             "maskScore": 5,
-            "leakScore": 20,
-            "ahi": 0,
-            "maskPairCount": 1,
-            "leakPercentile": 3.6,
+            "leakScore": 19,
+            "ahi": 1.1,
+            "maskPairCount": 2,
+            "leakPercentile": 18,
             "sleepRecordPatientId": "1234567890",
             "__typename": "SleepRecord"
           }
