@@ -1,8 +1,8 @@
-import { addMinutes, startOfDay, startOfToday, subDays } from 'date-fns';
-import { cumsum } from 'd3-array';
-import { randomNormal } from 'd3-random';
+import { addMinutes, startOfDay, startOfToday, subDays } from "date-fns";
+import { cumsum } from "d3-array";
+import { randomNormal } from "d3-random";
 
-import { degreesToRadians, radiansToDegrees } from './math';
+import { degreesToRadians, radiansToDegrees } from "./math";
 
 /**
  * Get random number between min (inclusive) and max (exclusive)
@@ -36,23 +36,20 @@ export function createSeries<TKey extends string>(options: {
   min: number;
   max: number;
   keys?: TKey[];
-  value?: 'number' | 'integer';
+  value?: "number" | "integer";
 }) {
   const count = options.count ?? 10;
   const min = options.min;
   const max = options.max;
-  const keys = options.keys ?? ['y'];
+  const keys = options.keys ?? ["y"];
 
   return Array.from({ length: count }).map((_, i) => {
     return {
-      x: options.value === 'integer' ? getRandomInteger(min, max) : getRandomNumber(min, max),
+      x: options.value === "integer" ? getRandomInteger(min, max) : getRandomNumber(min, max),
       ...Object.fromEntries(
         keys.map((key) => {
-          return [
-            key,
-            options.value === 'integer' ? getRandomInteger(min, max) : getRandomNumber(min, max),
-          ];
-        })
+          return [key, options.value === "integer" ? getRandomInteger(min, max) : getRandomNumber(min, max)];
+        }),
       ),
     } as { x: number } & { [K in TKey]: number };
   });
@@ -63,25 +60,22 @@ export function createDateSeries<TKey extends string>(options: {
   min: number;
   max: number;
   keys?: TKey[];
-  value?: 'number' | 'integer';
+  value?: "number" | "integer";
 }) {
   const now = startOfToday();
 
   const count = options.count ?? 10;
   const min = options.min;
   const max = options.max;
-  const keys = options.keys ?? ['value'];
+  const keys = options.keys ?? ["value"];
 
   return Array.from({ length: count }).map((_, i) => {
     return {
       date: subDays(now, count - i - 1),
       ...Object.fromEntries(
         keys.map((key) => {
-          return [
-            key,
-            options.value === 'integer' ? getRandomInteger(min, max) : getRandomNumber(min, max),
-          ];
-        })
+          return [key, options.value === "integer" ? getRandomInteger(min, max) : getRandomNumber(min, max)];
+        }),
       ),
     } as { date: Date } & { [K in TKey]: number };
   });
@@ -92,12 +86,12 @@ export function createTimeSeries<TKey extends string>(options: {
   min: number;
   max: number;
   keys: TKey[];
-  value: 'number' | 'integer';
+  value: "number" | "integer";
 }) {
   const count = options.count ?? 10;
   const min = options.min;
   const max = options.max;
-  const keys = options.keys ?? ['value'];
+  const keys = options.keys ?? ["value"];
 
   let lastStartDate = startOfDay(new Date());
 
@@ -111,11 +105,8 @@ export function createTimeSeries<TKey extends string>(options: {
       endDate,
       ...Object.fromEntries(
         keys.map((key) => {
-          return [
-            key,
-            options.value === 'integer' ? getRandomInteger(min, max) : getRandomNumber(min, max),
-          ];
-        })
+          return [key, options.value === "integer" ? getRandomInteger(min, max) : getRandomNumber(min, max)];
+        }),
       ),
     } as { name: string; startDate: Date; endDate: Date } & { [K in TKey]: number };
   });
@@ -131,25 +122,25 @@ export const wideData = [
 ];
 
 export const longData = [
-  { year: 2019, basket: 1, fruit: 'apples', value: 3840 },
-  { year: 2019, basket: 1, fruit: 'bananas', value: 1920 },
-  { year: 2019, basket: 2, fruit: 'cherries', value: 960 },
-  { year: 2019, basket: 2, fruit: 'grapes', value: 400 },
+  { year: 2019, basket: 1, fruit: "apples", value: 3840 },
+  { year: 2019, basket: 1, fruit: "bananas", value: 1920 },
+  { year: 2019, basket: 2, fruit: "cherries", value: 960 },
+  { year: 2019, basket: 2, fruit: "grapes", value: 400 },
 
-  { year: 2018, basket: 1, fruit: 'apples', value: 1600 },
-  { year: 2018, basket: 1, fruit: 'bananas', value: 1440 },
-  { year: 2018, basket: 2, fruit: 'cherries', value: 960 },
-  { year: 2018, basket: 2, fruit: 'grapes', value: 400 },
+  { year: 2018, basket: 1, fruit: "apples", value: 1600 },
+  { year: 2018, basket: 1, fruit: "bananas", value: 1440 },
+  { year: 2018, basket: 2, fruit: "cherries", value: 960 },
+  { year: 2018, basket: 2, fruit: "grapes", value: 400 },
 
-  { year: 2017, basket: 1, fruit: 'apples', value: 820 },
-  { year: 2017, basket: 1, fruit: 'bananas', value: 1000 },
-  { year: 2017, basket: 2, fruit: 'cherries', value: 640 },
-  { year: 2017, basket: 2, fruit: 'grapes', value: 400 },
+  { year: 2017, basket: 1, fruit: "apples", value: 820 },
+  { year: 2017, basket: 1, fruit: "bananas", value: 1000 },
+  { year: 2017, basket: 2, fruit: "cherries", value: 640 },
+  { year: 2017, basket: 2, fruit: "grapes", value: 400 },
 
-  { year: 2016, basket: 1, fruit: 'apples', value: 820 },
-  { year: 2016, basket: 1, fruit: 'bananas', value: 560 },
-  { year: 2016, basket: 2, fruit: 'cherries', value: 720 },
-  { year: 2016, basket: 2, fruit: 'grapes', value: 400 },
+  { year: 2016, basket: 1, fruit: "apples", value: 820 },
+  { year: 2016, basket: 1, fruit: "bananas", value: 560 },
+  { year: 2016, basket: 2, fruit: "cherries", value: 720 },
+  { year: 2016, basket: 2, fruit: "grapes", value: 400 },
 ];
 
 export function getPhyllotaxis({
