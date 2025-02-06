@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { Axis, Bars, Chart, Rule, Svg, Text, Tooltip } from "layerchart";
+  import { Axis, Bars, Chart, Rule, Svg, Text } from "layerchart";
   import { format, PeriodType } from "@layerstack/utils";
   import { scaleBand } from "d3-scale";
-  import { max, mean } from "d3-array";
+  import { max, maxIndex, mean, min } from "d3-array";
   import { Tabs, TabItem } from "flowbite-svelte";
 
   import type { PageProps } from "./$types";
 
-  import TabItemTitle from "./tab-item-title.svelte";
+  import MyTabItemTitle from "./my-tab-item-title.svelte";
+  import MyTooltip from "./my-tooltip.svelte";
 
   let { data }: PageProps = $props();
 
@@ -15,16 +16,19 @@
   let selectedPreset = $state("");
   let startDate = $state("");
   let endDate = $state("");
+  let today = $state("");
+
+  let currentChart = $state("hours");
 
   // Initialize and update dates based on preset
   $effect(() => {
     if (startDate === "" && endDate === "" && selectedPreset === "") {
-      // console.log("setting default date range");
       selectedPreset = "last60";
       const sixtyDaysAgo = new Date(data.newestDate);
       sixtyDaysAgo.setDate(data.newestDate.getDate() - 60);
       startDate = sixtyDaysAgo.toISOString().split("T")[0];
       endDate = data.newestDate.toISOString().split("T")[0];
+      today = new Date().toISOString().split("T")[0];
     }
   });
 
@@ -42,7 +46,6 @@
   });
 
   function handlePresetChange() {
-    // console.log("hello from handlePresetChange");
     startDate = data.oldestDate.toISOString().split("T")[0];
     endDate = data.newestDate.toISOString().split("T")[0];
     if (selectedPreset === "last30") {
@@ -66,24 +69,36 @@
       const lastDayLastMonth = new Date(data.newestDate.getFullYear(), data.newestDate.getMonth(), 0);
       startDate = firstDayLastMonth.toISOString().split("T")[0];
       endDate = lastDayLastMonth.toISOString().split("T")[0];
+    } else if (selectedPreset === "lastYear") {
+      const firstDayLastYear = new Date(data.newestDate.getFullYear() - 1, 0, 1);
+      const lastDayLastYear = new Date(data.newestDate.getFullYear(), 0, 0);
+      startDate = firstDayLastYear.toISOString().split("T")[0];
+      endDate = lastDayLastYear.toISOString().split("T")[0];
+    } else if (selectedPreset === "thisMonth") {
+      const firstDayThisMonth = new Date(data.newestDate.getFullYear(), data.newestDate.getMonth(), 1);
+      const lastDayThisMonth = new Date(data.newestDate.getFullYear(), data.newestDate.getMonth() + 1, 0);
+      startDate = firstDayThisMonth.toISOString().split("T")[0];
+      endDate = lastDayThisMonth.toISOString().split("T")[0];
+    } else if (selectedPreset === "thisYear") {
+      const firstDayThisYear = new Date(data.newestDate.getFullYear(), 0, 1);
+      startDate = firstDayThisYear.toISOString().split("T")[0];
+      endDate = data.newestDate.toISOString().split("T")[0];
     } else if (selectedPreset === "allTime") {
     }
   }
 
   function handleCustomDateChange() {
     selectedPreset = "custom";
-    // startDate = data.oldestDate.toISOString().split("T")[0];
-    // endDate = data.newestDate.toISOString().split("T")[0];
   }
 </script>
 
 <div class="p-4">
   <!-- Date Range Controls -->
-  <div class="mb-6 inline-block rounded bg-gray-50 p-4">
-    <h1 class="mb-4 text-xl font-bold">Sleep Data Analysis</h1>
+  <div class="mb-6 inline-block rounded-lg p-4">
+    <h1 class="text-primary mb-4 text-xl font-bold">ResMed Sleep Data</h1>
     <div class="flex flex-row items-start gap-4">
       <dvi class="flex items-center gap-3">
-        <label for="preset-range" class="text-sm font-semibold text-gray-800">Date Range</label>
+        <label for="preset-range" class="text-primary text-sm font-semibold">Date Range</label>
         <select
           id="preset-range"
           class="rounded border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -95,28 +110,35 @@
           <option value="last90">Last 90 Days</option>
           <option value="last180">Last 180 Days</option>
           <option value="lastMonth">Last Calendar Month</option>
-          <option value="allTime">All Time</option>
-          <option value="custom">Custom Range</option>
+          <option value="lastYear">Last Calendar Year</option>
+          <option value="thisMonth">This Calendar Month</option>
+          <option value="thisYear">This Calendar Year</option>
+          <option value="allTime">All Days</option>
+          <option value="custom">Custom Range →</option>
         </select>
       </dvi>
       <div class="flex items-center gap-3">
-        <label for="start-date" class="text-sm font-semibold text-gray-800">Start Date</label>
+        <label for="start-date" class="text-sm font-medium text-gray-700">Start Date</label>
         <input
           type="date"
           id="start-date"
           class="rounded border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
           bind:value={startDate}
           onchange={handleCustomDateChange}
+          min={data.oldestDate.toISOString().split("T")[0]}
+          max={data.newestDate.toISOString().split("T")[0]}
         />
       </div>
       <div class="flex items-center gap-3">
-        <label for="end-date" class="text-sm font-semibold text-gray-800">End Date</label>
+        <label for="end-date" class="text-sm font-medium text-gray-700">End Date</label>
         <input
           type="date"
           id="end-date"
           class="rounded border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
           bind:value={endDate}
           onchange={handleCustomDateChange}
+          min={data.oldestDate.toISOString().split("T")[0]}
+          max={data.newestDate.toISOString().split("T")[0]}
         />
       </div>
     </div>
@@ -126,13 +148,23 @@
     <div>No sleep data available.</div>
   {:else}
     <div class="flex flex-col">
-      <Tabs class="flex-nowrap" contentClass="p-4 bg-gray-50 rounded-lg">
-        <TabItem open class="me-8 w-32">
-          <TabItemTitle slot="title" name="hours" title="Usage Hours" />
-
+      <Tabs
+        tabStyle="underline"
+        class="flex-nowrap"
+        activeClasses="border-b-4 border-gray-300 p-4"
+        inactiveClasses="border-b-4 border-transparent p-4"
+        contentClass="rounded-b-lg bg-gray-50 p-4 pt-6"
+      >
+        <TabItem
+          open
+          class="me-8 w-32"
+          activeClasses="p-4 border-b-4 border-hours/80"
+          on:click={() => (currentChart = "hours")}
+        >
+          <MyTabItemTitle slot="title" name="hours" title="Usage Hours" />
           <!-- 1. USAGE HOURS Chart // totalUsage is USAGE HOURS -->
-          <div class="m-4 rounded">
-            <div class="h-[500px]">
+          <div class="">
+            <div class="h-[60vh]">
               <Chart
                 data={filteredData.totalUsageData}
                 x="date"
@@ -179,37 +211,21 @@
                     class="text-hours text-sm"
                   />
                 </Svg>
-                <Tooltip.Root
-                  variant="none"
-                  x="data"
-                  y="data"
-                  yOffset={2}
-                  anchor="bottom"
-                  motion={false}
-                  contained={false}
-                  class="rounded-xl border border-gray-400 bg-white p-2 whitespace-nowrap drop-shadow-lg"
-                  let:data
-                >
-                  <Tooltip.Item
-                    classes={{
-                      label: "text-[8px] text-gray-500",
-                      value: "font-bold text-sm text-black",
-                    }}
-                    value={`${Math.floor(data.value / 60)}hrs ${data.value % 60}mins`}
-                    valueAlign="center"
-                    label={`${format(data.date, PeriodType.Custom, { custom: "eeee, MMMM d" })}`}
-                  />
-                </Tooltip.Root>
+                <MyTooltip valueFormatFn={(value) => `${Math.floor(value / 60)}hrs ${value % 60}mins`} />
               </Chart>
             </div>
           </div>
         </TabItem>
-        <TabItem class="mx-8 w-32">
-          <TabItemTitle slot="title" name="leak" title="Mask Seal" />
+        <TabItem
+          class="mx-8 w-32"
+          activeClasses="p-4 border-b-4 border-seal/80"
+          on:click={() => (currentChart = "seal")}
+        >
+          <MyTabItemTitle slot="title" name="leak" title="Mask Seal" />
 
           <!-- 2. MASK SEAL Chart // leakPercentile is MASK SEAL // -->
           <div class="m-4 rounded">
-            <div class="h-[500px]">
+            <div class="h-[60vh]">
               <Chart
                 data={filteredData.leakPercentileData}
                 x="date"
@@ -264,40 +280,23 @@
                   />
                   <Bars radius={4} rounded="top" class="fill-seal/70" />
                 </Svg>
-                <Tooltip.Root
-                  variant="none"
-                  x="data"
-                  y="data"
-                  yOffset={4}
-                  anchor="bottom"
-                  motion={false}
-                  contained={false}
-                  class="rounded-xl border border-gray-400 bg-white p-2 whitespace-nowrap drop-shadow-lg"
-                  let:data
-                >
-                  <Tooltip.Item
-                    classes={{
-                      root: "flex flex-col justify-center items-center gap-1",
-                      label: "text-2xs text-black mx-auto tracking-tighter font-extralight",
-                      value: "font-bold text-sm text-black",
-                    }}
-                    value={`${data.value} L/min`}
-                    valueAlign="center"
-                    label={`${format(data.date, PeriodType.Custom, { custom: "eeee, MMMM d" })}`}
-                  />
-                </Tooltip.Root>
+                <MyTooltip valueFormatFn={(value) => `${value} L/min`} />
               </Chart>
             </div>
           </div>
         </TabItem>
 
         <!-- EVENTS -->
-        <TabItem class="mx-8 w-32">
-          <TabItemTitle slot="title" name="events" title="Events" />
+        <TabItem
+          class="mx-8 w-32"
+          activeClasses="p-4 border-b-4 border-events/80"
+          on:click={() => (currentChart = "events")}
+        >
+          <MyTabItemTitle slot="title" name="events" title="Events" />
 
           <!-- 3. EVENTS Chart // events is EVENTS //   -->
-          <div class="m-4 rounded">
-            <div class="h-[500px]">
+          <div class="m-4">
+            <div class="h-[60vh]">
               <Chart
                 data={filteredData.eventsData}
                 x="date"
@@ -312,7 +311,7 @@
                     placement="left"
                     grid
                     rule
-                    label="Events"
+                    label="Events/hour"
                     classes={{
                       label: "m-8 font-semibold text-base",
                     }}
@@ -327,39 +326,23 @@
                   />
                   <Bars radius={4} rounded="top" class="fill-events/70" />
                 </Svg>
-                <Tooltip.Root
-                  variant="none"
-                  x="data"
-                  y="data"
-                  yOffset={4}
-                  anchor="bottom"
-                  motion={false}
-                  contained={false}
-                  class="rounded-xl border border-gray-400 bg-white p-2 whitespace-nowrap drop-shadow-lg"
-                  let:data
-                >
-                  <Tooltip.Item
-                    classes={{
-                      root: "flex flex-col justify-center items-center gap-2",
-                      label: "text-2xs text-black mx-auto tracking-tighter font-extralight",
-                      value: "font-bold text-sm text-black",
-                    }}
-                    value={`${data.value} events/hour`}
-                    label={`${format(data.date, PeriodType.Custom, { custom: "eeee, MMMM d" })}`}
-                  />
-                </Tooltip.Root>
+                <MyTooltip valueFormatFn={(value) => `${value} events/hour`} />
               </Chart>
             </div>
           </div>
         </TabItem>
 
         <!-- MASK ON/OFF -->
-        <TabItem class="mx-8 w-32">
-          <TabItemTitle slot="title" name="mask" title="Mask On/Off" />
+        <TabItem
+          class="mx-8 w-32"
+          activeClasses="p-4 border-b-4 border-mask/80"
+          on:click={() => (currentChart = "mask")}
+        >
+          <MyTabItemTitle slot="title" name="mask" title="Mask On/Off" />
 
           <!-- 4. MASK ON/OFF Chart // maskPairCount is MASK ON/OFF -->
-          <div class="m-4 rounded">
-            <div class="h-[500px]">
+          <div class="">
+            <div class="h-[60vh]">
               <Chart
                 data={filteredData.maskPairCountData}
                 x="date"
@@ -389,40 +372,23 @@
                   />
                   <Bars radius={4} rounded="top" class="fill-mask/70" />
                 </Svg>
-                <Tooltip.Root
-                  variant="none"
-                  x="data"
-                  y="data"
-                  yOffset={4}
-                  anchor="bottom"
-                  motion={false}
-                  contained={false}
-                  class="rounded-xl border border-gray-400 bg-white p-2 whitespace-nowrap drop-shadow-lg"
-                  let:data
-                >
-                  <Tooltip.Item
-                    classes={{
-                      root: "flex flex-col justify-center items-center gap-2",
-                      label: "text-2xs text-black mx-auto tracking-tighter font-extralight",
-                      value: "font-bold text-sm text-black",
-                    }}
-                    value={`${data.value} times`}
-                    valueAlign="center"
-                    label={`${format(data.date, PeriodType.Custom, { custom: "eeee, MMMM d" })}`}
-                  />
-                </Tooltip.Root>
+                <MyTooltip valueFormatFn={(value) => `${value} times`} />
               </Chart>
             </div>
           </div>
         </TabItem>
 
         <!-- SCORE -->
-        <TabItem class="ms-8 w-32">
-          <TabItemTitle slot="title" name="score" title="myAir Score" />
+        <TabItem
+          class="ms-8 w-32"
+          activeClasses="p-4 border-b-4 border-score/80"
+          on:click={() => (currentChart = "score")}
+        >
+          <MyTabItemTitle slot="title" name="score" title="myAir Score" />
 
           <!--5. MYAIR SCORE Chart // sleepScore is MYAIR SCORE -->
           <div class="m-4 rounded">
-            <div class="h-[500px]">
+            <div class="h-[60vh]">
               <Chart
                 data={filteredData.sleepScoreData}
                 x="date"
@@ -452,28 +418,7 @@
                   />
                   <Bars radius={4} rounded="top" class="fill-score/80" />
                 </Svg>
-                <Tooltip.Root
-                  variant="none"
-                  x="data"
-                  y="data"
-                  yOffset={4}
-                  anchor="bottom"
-                  motion={false}
-                  contained={false}
-                  class="rounded-xl border border-gray-400 bg-white p-2 whitespace-nowrap drop-shadow-lg"
-                  let:data
-                >
-                  <Tooltip.Item
-                    classes={{
-                      root: "flex flex-col justify-center items-center gap-2",
-                      label: "text-2xs text-black mx-auto tracking-tighter font-extralight",
-                      value: "font-bold text-sm text-black",
-                    }}
-                    value={`${data.value}/100`}
-                    valueAlign="center"
-                    label={`${format(data.date, PeriodType.Custom, { custom: "eeee, MMMM d" })}`}
-                  />
-                </Tooltip.Root>
+                <MyTooltip valueFormatFn={(value) => `${value}/100`} />
               </Chart>
             </div>
           </div>
