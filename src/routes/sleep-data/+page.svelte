@@ -2,7 +2,7 @@
   import { Axis, Bars, Chart, Rule, Svg, Text } from "layerchart";
   import { format, PeriodType } from "@layerstack/utils";
   import { scaleBand } from "d3-scale";
-  import { max, maxIndex, mean, min } from "d3-array";
+  import { max, mean } from "d3-array";
   import { Tabs, TabItem } from "flowbite-svelte";
 
   import type { PageProps } from "./$types";
@@ -13,22 +13,17 @@
   let { data }: PageProps = $props();
 
   // Date range control
-  let selectedPreset = $state("");
+  let selectedPreset = $state("last60");
   let startDate = $state("");
   let endDate = $state("");
-  let today = $state("");
-
-  let currentChart = $state("hours");
 
   // Initialize and update dates based on preset
   $effect(() => {
-    if (startDate === "" && endDate === "" && selectedPreset === "") {
-      selectedPreset = "last60";
+    if (startDate === "" && endDate === "" && selectedPreset === "last60") {
       const sixtyDaysAgo = new Date(data.newestDate);
       sixtyDaysAgo.setDate(data.newestDate.getDate() - 60);
       startDate = sixtyDaysAgo.toISOString().split("T")[0];
       endDate = data.newestDate.toISOString().split("T")[0];
-      today = new Date().toISOString().split("T")[0];
     }
   });
 
@@ -46,7 +41,6 @@
   });
 
   function handlePresetChange() {
-    startDate = data.oldestDate.toISOString().split("T")[0];
     endDate = data.newestDate.toISOString().split("T")[0];
     if (selectedPreset === "last30") {
       const thirtyDaysAgo = new Date(data.newestDate);
@@ -84,6 +78,7 @@
       startDate = firstDayThisYear.toISOString().split("T")[0];
       endDate = data.newestDate.toISOString().split("T")[0];
     } else if (selectedPreset === "allTime") {
+      startDate = data.oldestDate.toISOString().split("T")[0];
     }
   }
 
@@ -155,12 +150,7 @@
         inactiveClasses="border-b-4 border-transparent p-4"
         contentClass="rounded-b-lg bg-gray-50 p-4 pt-6"
       >
-        <TabItem
-          open
-          class="me-8 w-32"
-          activeClasses="p-4 border-b-4 border-hours/80"
-          on:click={() => (currentChart = "hours")}
-        >
+        <TabItem open class="me-8 w-32" activeClasses="p-4 border-b-4 border-hours/80">
           <MyTabItemTitle slot="title" name="hours" title="Usage Hours" />
           <!-- 1. USAGE HOURS Chart // totalUsage is USAGE HOURS -->
           <div class="">
@@ -194,7 +184,6 @@
                     format={(d) => {
                       const date = new Date(d);
                       const dayNumber = format(d, PeriodType.Day, { variant: "short" });
-                      const dayLetter = format(d, PeriodType.Custom, { custom: "eeeee" });
                       return date.getDay() === 0 ? dayNumber : "";
                     }}
                     rule
@@ -216,11 +205,7 @@
             </div>
           </div>
         </TabItem>
-        <TabItem
-          class="mx-8 w-32"
-          activeClasses="p-4 border-b-4 border-seal/80"
-          on:click={() => (currentChart = "seal")}
-        >
+        <TabItem class="mx-8 w-32" activeClasses="p-4 border-b-4 border-seal/80">
           <MyTabItemTitle slot="title" name="leak" title="Mask Seal" />
 
           <!-- 2. MASK SEAL Chart // leakPercentile is MASK SEAL // -->
@@ -287,11 +272,7 @@
         </TabItem>
 
         <!-- EVENTS -->
-        <TabItem
-          class="mx-8 w-32"
-          activeClasses="p-4 border-b-4 border-events/80"
-          on:click={() => (currentChart = "events")}
-        >
+        <TabItem class="mx-8 w-32" activeClasses="p-4 border-b-4 border-events/80">
           <MyTabItemTitle slot="title" name="events" title="Events" />
 
           <!-- 3. EVENTS Chart // events is EVENTS //   -->
@@ -333,11 +314,7 @@
         </TabItem>
 
         <!-- MASK ON/OFF -->
-        <TabItem
-          class="mx-8 w-32"
-          activeClasses="p-4 border-b-4 border-mask/80"
-          on:click={() => (currentChart = "mask")}
-        >
+        <TabItem class="mx-8 w-32" activeClasses="p-4 border-b-4 border-mask/80">
           <MyTabItemTitle slot="title" name="mask" title="Mask On/Off" />
 
           <!-- 4. MASK ON/OFF Chart // maskPairCount is MASK ON/OFF -->
@@ -379,11 +356,7 @@
         </TabItem>
 
         <!-- SCORE -->
-        <TabItem
-          class="ms-8 w-32"
-          activeClasses="p-4 border-b-4 border-score/80"
-          on:click={() => (currentChart = "score")}
-        >
+        <TabItem class="ms-8 w-32" activeClasses="p-4 border-b-4 border-score/80">
           <MyTabItemTitle slot="title" name="score" title="myAir Score" />
 
           <!--5. MYAIR SCORE Chart // sleepScore is MYAIR SCORE -->

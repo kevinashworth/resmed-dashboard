@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Axis, Bars, Chart, Rule, Svg, Text, Tooltip } from "layerchart";
+  import { Tooltip } from "layerchart";
   import { format, PeriodType } from "@layerstack/utils";
 
   interface Props {
