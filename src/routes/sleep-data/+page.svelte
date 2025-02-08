@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { Axis, Bars, Chart, Rule, Svg, Text } from "layerchart";
+  import { Axis, Bars, Chart, Rule, Spline, Svg, Text } from "layerchart";
   import { format, PeriodType } from "@layerstack/utils";
   import { scaleBand } from "d3-scale";
-  import { max, mean } from "d3-array";
+  import { blur, max, mean } from "d3-array";
   import { Tabs, TabItem } from "flowbite-svelte";
+  import { onMount, onDestroy } from "svelte";
 
   import type { PageProps } from "./$types";
+  import type { ChartData } from "./+page";
 
   import MyTabItemTitle from "./my-tab-item-title.svelte";
   import MyTooltip from "./my-tooltip.svelte";
@@ -85,7 +87,81 @@
   function handleCustomDateChange() {
     selectedPreset = "custom";
   }
+
+  function blurred(data: ChartData[], windowSize: number) {
+    const blurredValues = blur(
+      data.map((d) => d.value),
+      windowSize,
+    );
+    return data.map((d, i) => ({
+      ...d,
+      value: blurredValues[i], // || d.value, // Maintain original value if no blur
+    }));
+  }
+
+  const movingAverage = (data: ChartData[], windowSize: number) => {
+    return data.map((row, index, total) => {
+      const start = Math.max(0, index - windowSize);
+      const end = index;
+      const subset = total.slice(start, end + 1);
+      const sum = subset.reduce((a, b) => {
+        return a + b.value;
+      }, 0);
+      return {
+        group: row.group,
+        date: row.date,
+        value: sum / subset.length,
+      };
+    });
+  };
+
+  const blurredMovingAverage = (data: ChartData[], windowSize: number) => {
+    const ma = movingAverage(data, windowSize);
+    const b = blurred(ma, 0.5);
+    return b;
+  };
+
+  const movingAverageData = $derived(blurred(filteredData.leakPercentileData, 7));
+  const weeklyMovingAverageData = $derived({
+    eventsData: blurredMovingAverage(filteredData.eventsData, 7),
+    leakPercentileData: blurredMovingAverage(filteredData.leakPercentileData, 7),
+    maskPairCountData: blurredMovingAverage(filteredData.maskPairCountData, 7),
+    sleepScoreData: blurredMovingAverage(filteredData.sleepScoreData, 7),
+    totalUsageData: blurredMovingAverage(filteredData.totalUsageData, 7),
+  });
+  function last(data: ChartData[]) {
+    if (!data || data.length === 0) return 0;
+    return data[data.length - 1].value;
+  }
+  const lastMovingAverageDataPoint = $derived({
+    events: last(weeklyMovingAverageData.eventsData),
+    leak: last(weeklyMovingAverageData.leakPercentileData),
+    mask: last(weeklyMovingAverageData.maskPairCountData),
+    score: last(weeklyMovingAverageData.sleepScoreData),
+    usage: last(weeklyMovingAverageData.totalUsageData),
+  });
+
+  let currentTab = $state("hours"); // default tab
+
+  // On component mount, retrieve the current tab from local storage
+  onMount(() => {
+    const storedTab = localStorage.getItem("currentTab");
+    if (storedTab) {
+      currentTab = storedTab;
+    }
+  });
+  onDestroy(() => {
+    localStorage.setItem("currentTab", currentTab);
+  });
+
+  type TabNames = "hours" | "events" | "leak" | "mask" | "score";
+  function handleTabClick(tabName: TabNames) {
+    currentTab = tabName;
+    localStorage.setItem("currentTab", tabName);
+  }
 </script>
+
+{@debug currentTab}
 
 <div class="p-4">
   <!-- Date Range Controls -->
@@ -150,10 +226,15 @@
         inactiveClasses="border-b-4 border-transparent p-4"
         contentClass="rounded-b-lg bg-gray-50 p-4 pt-6"
       >
-        <TabItem open class="me-8 w-32" activeClasses="p-4 border-b-4 border-hours/80">
+        <TabItem
+          open={currentTab === "hours"}
+          class="me-8 w-32"
+          activeClasses="p-4 border-b-4 border-hours/80"
+          onclick={() => handleTabClick("hours")}
+        >
           <MyTabItemTitle slot="title" name="hours" title="Usage Hours" />
           <!-- 1. USAGE HOURS Chart // totalUsage is USAGE HOURS -->
-          <div class="">
+          <div class="m-4">
             <div class="h-[60vh]">
               <Chart
                 data={filteredData.totalUsageData}
@@ -166,7 +247,6 @@
                 let:width
                 let:yScale
               >
-                {@const avg = mean(filteredData.totalUsageData, (d) => d.value)}
                 <Svg>
                   <Axis
                     placement="left"
@@ -189,15 +269,13 @@
                     rule
                   />
                   <Bars radius={2} rounded="top" class="fill-hours/70" />
-                  <Rule y={avg} class="stroke-hours/60 stroke-1 [stroke-dasharray:3]" />
+                  <Spline data={weeklyMovingAverageData.totalUsageData} class="stroke-hours invert" />
                   <Text
                     x={width}
-                    y={yScale(avg)}
-                    dy={-4}
-                    value="Average"
+                    y={0}
+                    value="Moving Average"
                     textAnchor="end"
-                    verticalAnchor="end"
-                    class="text-hours text-sm"
+                    class="fill-hours stroke-hours/60 text-xs invert"
                   />
                 </Svg>
                 <MyTooltip valueFormatFn={(value) => `${Math.floor(value / 60)}hrs ${value % 60}mins`} />
@@ -205,11 +283,16 @@
             </div>
           </div>
         </TabItem>
-        <TabItem class="mx-8 w-32" activeClasses="p-4 border-b-4 border-seal/80">
+        <TabItem
+          open={currentTab === "leak"}
+          class="mx-8 w-32"
+          activeClasses="p-4 border-b-4 border-seal/80"
+          onclick={() => handleTabClick("leak")}
+        >
           <MyTabItemTitle slot="title" name="leak" title="Mask Seal" />
 
           <!-- 2. MASK SEAL Chart // leakPercentile is MASK SEAL // -->
-          <div class="m-4 rounded">
+          <div class="m-4">
             <div class="h-[60vh]">
               <Chart
                 data={filteredData.leakPercentileData}
@@ -222,29 +305,8 @@
                 let:width
                 let:yScale
               >
-                {@const avg = mean(filteredData.leakPercentileData, (d) => d.value)}
                 {@const maxx = max(filteredData.leakPercentileData, (d) => d.value) ?? 10}
                 <Svg>
-                  <Rule y={avg} class="stroke-seal/60 stroke-1 [stroke-dasharray:3]" title="qwer" />
-                  <Text
-                    x={width}
-                    y={yScale(avg)}
-                    dy={-4}
-                    value={`Average ${avg?.toFixed(1)} L/min`}
-                    textAnchor="end"
-                    verticalAnchor="end"
-                    class="fill-seal text-sm"
-                  />
-                  <Rule y={24} class="stroke-gray-400 stroke-1" />
-                  <Text
-                    x={width}
-                    y={yScale(24)}
-                    dy={-4}
-                    value="Threshold 24 L/min"
-                    textAnchor="end"
-                    verticalAnchor="end"
-                    class="fill-gray-600 text-sm"
-                  />
                   <Axis
                     placement="left"
                     grid
@@ -264,6 +326,24 @@
                     rule
                   />
                   <Bars radius={4} rounded="top" class="fill-seal/70" />
+                  <Spline data={weeklyMovingAverageData.leakPercentileData} class="stroke-seal invert-60" />
+                  <Text
+                    x={width}
+                    y={yScale(lastMovingAverageDataPoint.leak)}
+                    dy={-12}
+                    value="Moving Average"
+                    textAnchor="end"
+                    class="stroke-seal/70 fill-seal text-xs invert-60"
+                  />
+                  <Rule y={24} class="stroke-gray-400 stroke-1" />
+                  <Text
+                    x={width}
+                    y={yScale(24)}
+                    dy={-4}
+                    value="Threshold 24 L/min"
+                    textAnchor="end"
+                    class="fill-gray-400 text-xs"
+                  />
                 </Svg>
                 <MyTooltip valueFormatFn={(value) => `${value} L/min`} />
               </Chart>
@@ -272,7 +352,12 @@
         </TabItem>
 
         <!-- EVENTS -->
-        <TabItem class="mx-8 w-32" activeClasses="p-4 border-b-4 border-events/80">
+        <TabItem
+          open={currentTab === "events"}
+          class="mx-8 w-32"
+          activeClasses="p-4 border-b-4 border-events/80"
+          onclick={() => handleTabClick("events")}
+        >
           <MyTabItemTitle slot="title" name="events" title="Events" />
 
           <!-- 3. EVENTS Chart // events is EVENTS //   -->
@@ -286,6 +371,8 @@
                 yDomain={[0, null]}
                 padding={{ left: 32, bottom: 24 }}
                 tooltip={{ mode: "band" }}
+                let:width
+                let:yScale
               >
                 <Svg>
                   <Axis
@@ -306,6 +393,14 @@
                     rule
                   />
                   <Bars radius={4} rounded="top" class="fill-events/70" />
+                  <Spline data={weeklyMovingAverageData.eventsData} class="stroke-events invert-60" />
+                  <Text
+                    x={width}
+                    y={0}
+                    value="Moving Average"
+                    textAnchor="end"
+                    class="fill-events stroke-events/70 text-xs invert-60"
+                  />
                 </Svg>
                 <MyTooltip valueFormatFn={(value) => `${value} events/hour`} />
               </Chart>
@@ -314,11 +409,16 @@
         </TabItem>
 
         <!-- MASK ON/OFF -->
-        <TabItem class="mx-8 w-32" activeClasses="p-4 border-b-4 border-mask/80">
+        <TabItem
+          open={currentTab === "mask"}
+          class="mx-8 w-32"
+          activeClasses="p-4 border-b-4 border-mask/80"
+          onclick={() => handleTabClick("mask")}
+        >
           <MyTabItemTitle slot="title" name="mask" title="Mask On/Off" />
 
           <!-- 4. MASK ON/OFF Chart // maskPairCount is MASK ON/OFF -->
-          <div class="">
+          <div class="m-4">
             <div class="h-[60vh]">
               <Chart
                 data={filteredData.maskPairCountData}
@@ -328,6 +428,8 @@
                 yDomain={[0, null]}
                 padding={{ left: 32, bottom: 24 }}
                 tooltip={{ mode: "band" }}
+                let:width
+                let:yScale
               >
                 <Svg>
                   <Axis
@@ -348,6 +450,14 @@
                     rule
                   />
                   <Bars radius={4} rounded="top" class="fill-mask/70" />
+                  <Spline data={weeklyMovingAverageData.maskPairCountData} class="stroke-mask invert-60" />
+                  <Text
+                    x={width}
+                    y={0}
+                    value="Moving Average"
+                    textAnchor="end"
+                    class="stroke-mask/60 fill-mask text-xs invert-60"
+                  />
                 </Svg>
                 <MyTooltip valueFormatFn={(value) => `${value} times`} />
               </Chart>
@@ -356,11 +466,16 @@
         </TabItem>
 
         <!-- SCORE -->
-        <TabItem class="ms-8 w-32" activeClasses="p-4 border-b-4 border-score/80">
+        <TabItem
+          open={currentTab === "score"}
+          class="ms-8 w-32"
+          activeClasses="p-4 border-b-4 border-score/80"
+          onclick={() => handleTabClick("score")}
+        >
           <MyTabItemTitle slot="title" name="score" title="myAir Score" />
 
           <!--5. MYAIR SCORE Chart // sleepScore is MYAIR SCORE -->
-          <div class="m-4 rounded">
+          <div class="m-4">
             <div class="h-[60vh]">
               <Chart
                 data={filteredData.sleepScoreData}
@@ -370,6 +485,8 @@
                 yDomain={[0, null]}
                 padding={{ left: 32, bottom: 24 }}
                 tooltip={{ mode: "band" }}
+                let:width
+                let:yScale
               >
                 <Svg>
                   <Axis
@@ -390,6 +507,14 @@
                     rule
                   />
                   <Bars radius={4} rounded="top" class="fill-score/80" />
+                  <Spline data={weeklyMovingAverageData.sleepScoreData} class="stroke-score invert" />
+                  <Text
+                    x={width}
+                    y={0}
+                    value="Moving Average"
+                    textAnchor="end"
+                    class="fill-score stroke-score/60 text-xs invert"
+                  />
                 </Svg>
                 <MyTooltip valueFormatFn={(value) => `${value}/100`} />
               </Chart>

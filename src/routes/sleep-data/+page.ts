@@ -1,6 +1,12 @@
 import type { PageLoad } from "./$types";
 import { error } from "@sveltejs/kit";
 
+export interface ChartData {
+  group: string;
+  date: Date;
+  value: number;
+}
+
 export const load: PageLoad = async ({ fetch }) => {
   let loading = true;
   try {
@@ -27,7 +33,7 @@ export const load: PageLoad = async ({ fetch }) => {
     const newestDate = new Date(combinedData[combinedData.length - 1].startDate);
 
     // Transform data for the chart
-    const chartData = combinedData.flatMap((record) => [
+    const chartData: ChartData[] = combinedData.flatMap((record) => [
       {
         group: "Events",
         date: new Date(record.startDate),
