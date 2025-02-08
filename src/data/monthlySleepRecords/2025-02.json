@@ -59,7 +59,7 @@
             "leakScore": 20,
             "ahi": 0.6,
             "maskPairCount": 1,
-            "leakPercentile": 0,
+            "leakPercentile": 0.0,
             "sleepRecordPatientId": "1234567890",
             "__typename": "SleepRecord"
           },
@@ -79,15 +79,29 @@
           },
           {
             "startDate": "2025-02-06",
-            "totalUsage": 30,
-            "sleepScore": 35,
-            "usageScore": 5,
+            "totalUsage": 466,
+            "sleepScore": 100,
+            "usageScore": 70,
             "ahiScore": 5,
             "maskScore": 5,
             "leakScore": 20,
-            "ahi": 2,
+            "ahi": 1.4,
+            "maskPairCount": 2,
+            "leakPercentile": 12.0,
+            "sleepRecordPatientId": "1234567890",
+            "__typename": "SleepRecord"
+          },
+          {
+            "startDate": "2025-02-07",
+            "totalUsage": 460,
+            "sleepScore": 97,
+            "usageScore": 70,
+            "ahiScore": 5,
+            "maskScore": 5,
+            "leakScore": 17,
+            "ahi": 0.7,
             "maskPairCount": 1,
-            "leakPercentile": 3.6,
+            "leakPercentile": 21.6,
             "sleepRecordPatientId": "1234567890",
             "__typename": "SleepRecord"
           }
