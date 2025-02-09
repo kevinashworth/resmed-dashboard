@@ -20,3 +20,12 @@ export interface PatientWrapper {
     items: SleepRecord[];
   };
 }
+
+export interface ChartData {
+  group: string;
+  date: Date;
+  value: number;
+}
+
+export type IconNames = "events" | "hours" | "leak" | "mask" | "score";
+export type TabNames = "events" | "hours" | "leak" | "mask" | "score";

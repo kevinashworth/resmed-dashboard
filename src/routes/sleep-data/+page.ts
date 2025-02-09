@@ -1,11 +1,6 @@
 import type { PageLoad } from "./$types";
 import { error } from "@sveltejs/kit";
-
-export interface ChartData {
-  group: string;
-  date: Date;
-  value: number;
-}
+import type { ChartData } from "$lib/types";
 
 export const load: PageLoad = async ({ fetch }) => {
   let loading = true;
