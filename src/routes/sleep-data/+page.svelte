@@ -2,13 +2,15 @@
   import { Axis, Bars, Chart, Rule, Spline, Svg, Text } from "layerchart";
   import { format, PeriodType } from "@layerstack/utils";
   import { scaleBand } from "d3-scale";
-  import { blur, max, mean } from "d3-array";
+  import { blur, max } from "d3-array";
   import { Tabs, TabItem } from "flowbite-svelte";
   import { onMount, onDestroy } from "svelte";
+  import { browser } from "$app/environment";
 
   import type { PageProps } from "./$types";
-  import type { ChartData } from "./+page";
+  import type { ChartData, TabNames } from "$lib/types";
 
+  import MyChart from "./my-chart.svelte";
   import MyTabItemTitle from "./my-tab-item-title.svelte";
   import MyTooltip from "./my-tooltip.svelte";
 
@@ -18,6 +20,39 @@
   let selectedPreset = $state("last60");
   let startDate = $state("");
   let endDate = $state("");
+  let currentTab: TabNames = $state("hours"); // default tab
+
+  // On component mount, retrieve the current tab from local storage
+  onMount(() => {
+    if (!browser) return;
+    const storedSelectedPreset = localStorage.getItem("selectedPreset");
+    const storedStartDate = localStorage.getItem("startDate");
+    const storedEndDate = localStorage.getItem("endDate");
+    const storedCurrentTab = localStorage.getItem("currentTab");
+    if (storedSelectedPreset) {
+      selectedPreset = storedSelectedPreset;
+    }
+    if (storedStartDate) {
+      startDate = storedStartDate;
+    }
+    if (storedEndDate) {
+      endDate = storedEndDate;
+    }
+    if (storedCurrentTab) {
+      currentTab = storedCurrentTab as TabNames;
+    }
+  });
+  onDestroy(() => {
+    if (!browser) return;
+    localStorage.setItem("startDate", startDate);
+    localStorage.setItem("endDate", endDate);
+    localStorage.setItem("selectedPreset", selectedPreset);
+    localStorage.setItem("currentTab", currentTab);
+  });
+
+  function handleTabClick(tabName: TabNames) {
+    currentTab = tabName;
+  }
 
   // Initialize and update dates based on preset
   $effect(() => {
@@ -95,7 +130,7 @@
     );
     return data.map((d, i) => ({
       ...d,
-      value: blurredValues[i], // || d.value, // Maintain original value if no blur
+      value: blurredValues[i] || d.value, // Maintain original value if no blur
     }));
   }
 
@@ -121,7 +156,6 @@
     return b;
   };
 
-  const movingAverageData = $derived(blurred(filteredData.leakPercentileData, 7));
   const weeklyMovingAverageData = $derived({
     eventsData: blurredMovingAverage(filteredData.eventsData, 7),
     leakPercentileData: blurredMovingAverage(filteredData.leakPercentileData, 7),
@@ -129,6 +163,7 @@
     sleepScoreData: blurredMovingAverage(filteredData.sleepScoreData, 7),
     totalUsageData: blurredMovingAverage(filteredData.totalUsageData, 7),
   });
+
   function last(data: ChartData[]) {
     if (!data || data.length === 0) return 0;
     return data[data.length - 1].value;
@@ -140,28 +175,7 @@
     score: last(weeklyMovingAverageData.sleepScoreData),
     usage: last(weeklyMovingAverageData.totalUsageData),
   });
-
-  let currentTab = $state("hours"); // default tab
-
-  // On component mount, retrieve the current tab from local storage
-  onMount(() => {
-    const storedTab = localStorage.getItem("currentTab");
-    if (storedTab) {
-      currentTab = storedTab;
-    }
-  });
-  onDestroy(() => {
-    localStorage.setItem("currentTab", currentTab);
-  });
-
-  type TabNames = "hours" | "events" | "leak" | "mask" | "score";
-  function handleTabClick(tabName: TabNames) {
-    currentTab = tabName;
-    localStorage.setItem("currentTab", tabName);
-  }
 </script>
-
-{@debug currentTab}
 
 <div class="p-4">
   <!-- Date Range Controls -->
@@ -236,50 +250,19 @@
           <!-- 1. USAGE HOURS Chart // totalUsage is USAGE HOURS -->
           <div class="m-4">
             <div class="h-[60vh]">
-              <Chart
+              <MyChart
+                axisFormatFn={(d) => `${Math.floor(d / 60)}`}
+                classes={{
+                  bars: "fill-hours/70",
+                  spline: "stroke-hours invert",
+                  text: "fill-hours stroke-hours/60 text-xs invert",
+                }}
                 data={filteredData.totalUsageData}
-                x="date"
-                xScale={scaleBand().padding(0.4)}
-                y="value"
-                yDomain={[0, 600]}
-                padding={{ left: 32, bottom: 24 }}
-                tooltip={{ mode: "band" }}
-                let:width
-                let:yScale
-              >
-                <Svg>
-                  <Axis
-                    placement="left"
-                    format={(d) => `${Math.floor(d / 60)}`}
-                    grid
-                    rule
-                    label="Hours"
-                    classes={{
-                      label: "m-8 font-semibold text-base",
-                    }}
-                    ticks={[0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600]}
-                  />
-                  <Axis
-                    placement="bottom"
-                    format={(d) => {
-                      const date = new Date(d);
-                      const dayNumber = format(d, PeriodType.Day, { variant: "short" });
-                      return date.getDay() === 0 ? dayNumber : "";
-                    }}
-                    rule
-                  />
-                  <Bars radius={2} rounded="top" class="fill-hours/70" />
-                  <Spline data={weeklyMovingAverageData.totalUsageData} class="stroke-hours invert" />
-                  <Text
-                    x={width}
-                    y={0}
-                    value="Moving Average"
-                    textAnchor="end"
-                    class="fill-hours stroke-hours/60 text-xs invert"
-                  />
-                </Svg>
-                <MyTooltip valueFormatFn={(value) => `${Math.floor(value / 60)}hrs ${value % 60}mins`} />
-              </Chart>
+                leftAxisLabel="Hours"
+                lastMovingAverageDataPoint={lastMovingAverageDataPoint.usage}
+                splineData={weeklyMovingAverageData.totalUsageData}
+                valueFormatFn={(value) => `${Math.floor(value / 60)}hrs ${value % 60}mins`}
+              />
             </div>
           </div>
         </TabItem>
@@ -363,47 +346,18 @@
           <!-- 3. EVENTS Chart // events is EVENTS //   -->
           <div class="m-4">
             <div class="h-[60vh]">
-              <Chart
+              <MyChart
+                classes={{
+                  bars: "fill-events/70",
+                  spline: "stroke-events invert-60",
+                  text: "fill-events stroke-events/70 text-xs invert-60",
+                }}
                 data={filteredData.eventsData}
-                x="date"
-                xScale={scaleBand().padding(0.4)}
-                y="value"
-                yDomain={[0, null]}
-                padding={{ left: 32, bottom: 24 }}
-                tooltip={{ mode: "band" }}
-                let:width
-                let:yScale
-              >
-                <Svg>
-                  <Axis
-                    placement="left"
-                    grid
-                    rule
-                    label="Events/hour"
-                    classes={{
-                      label: "m-8 font-semibold text-base",
-                    }}
-                  />
-                  <Axis
-                    placement="bottom"
-                    format={(d) => {
-                      const date = new Date(d);
-                      return date.getDay() === 0 ? format(d, PeriodType.Day, { variant: "short" }) : "";
-                    }}
-                    rule
-                  />
-                  <Bars radius={4} rounded="top" class="fill-events/70" />
-                  <Spline data={weeklyMovingAverageData.eventsData} class="stroke-events invert-60" />
-                  <Text
-                    x={width}
-                    y={0}
-                    value="Moving Average"
-                    textAnchor="end"
-                    class="fill-events stroke-events/70 text-xs invert-60"
-                  />
-                </Svg>
-                <MyTooltip valueFormatFn={(value) => `${value} events/hour`} />
-              </Chart>
+                lastMovingAverageDataPoint={lastMovingAverageDataPoint.events}
+                leftAxisLabel="Events/hour"
+                splineData={weeklyMovingAverageData.eventsData}
+                valueFormatFn={(value) => `${value} events/hour`}
+              />
             </div>
           </div>
         </TabItem>
@@ -420,47 +374,18 @@
           <!-- 4. MASK ON/OFF Chart // maskPairCount is MASK ON/OFF -->
           <div class="m-4">
             <div class="h-[60vh]">
-              <Chart
+              <MyChart
+                classes={{
+                  bars: "fill-mask/70",
+                  spline: "stroke-mask invert-60",
+                  text: "stroke-mask/60 fill-mask text-xs invert-60",
+                }}
                 data={filteredData.maskPairCountData}
-                x="date"
-                xScale={scaleBand().padding(0.4)}
-                y="value"
-                yDomain={[0, null]}
-                padding={{ left: 32, bottom: 24 }}
-                tooltip={{ mode: "band" }}
-                let:width
-                let:yScale
-              >
-                <Svg>
-                  <Axis
-                    placement="left"
-                    grid
-                    rule
-                    label="On/off"
-                    classes={{
-                      label: "m-8 font-semibold text-base",
-                    }}
-                  />
-                  <Axis
-                    placement="bottom"
-                    format={(d) => {
-                      const date = new Date(d);
-                      return date.getDay() === 0 ? format(d, PeriodType.Day, { variant: "short" }) : "";
-                    }}
-                    rule
-                  />
-                  <Bars radius={4} rounded="top" class="fill-mask/70" />
-                  <Spline data={weeklyMovingAverageData.maskPairCountData} class="stroke-mask invert-60" />
-                  <Text
-                    x={width}
-                    y={0}
-                    value="Moving Average"
-                    textAnchor="end"
-                    class="stroke-mask/60 fill-mask text-xs invert-60"
-                  />
-                </Svg>
-                <MyTooltip valueFormatFn={(value) => `${value} times`} />
-              </Chart>
+                lastMovingAverageDataPoint={lastMovingAverageDataPoint.mask}
+                leftAxisLabel="On/Off"
+                splineData={weeklyMovingAverageData.maskPairCountData}
+                valueFormatFn={(value) => `${value} times`}
+              />
             </div>
           </div>
         </TabItem>
@@ -477,47 +402,18 @@
           <!--5. MYAIR SCORE Chart // sleepScore is MYAIR SCORE -->
           <div class="m-4">
             <div class="h-[60vh]">
-              <Chart
+              <MyChart
+                classes={{
+                  bars: "fill-score/80",
+                  spline: "stroke-score invert",
+                  text: "fill-score stroke-score/60 text-xs invert",
+                }}
                 data={filteredData.sleepScoreData}
-                x="date"
-                xScale={scaleBand().padding(0.4)}
-                y="value"
-                yDomain={[0, null]}
-                padding={{ left: 32, bottom: 24 }}
-                tooltip={{ mode: "band" }}
-                let:width
-                let:yScale
-              >
-                <Svg>
-                  <Axis
-                    placement="left"
-                    grid
-                    rule
-                    label="Score"
-                    classes={{
-                      label: "m-8 font-semibold text-base",
-                    }}
-                  />
-                  <Axis
-                    placement="bottom"
-                    format={(d) => {
-                      const date = new Date(d);
-                      return date.getDay() === 0 ? format(d, PeriodType.Day, { variant: "short" }) : "";
-                    }}
-                    rule
-                  />
-                  <Bars radius={4} rounded="top" class="fill-score/80" />
-                  <Spline data={weeklyMovingAverageData.sleepScoreData} class="stroke-score invert" />
-                  <Text
-                    x={width}
-                    y={0}
-                    value="Moving Average"
-                    textAnchor="end"
-                    class="fill-score stroke-score/60 text-xs invert"
-                  />
-                </Svg>
-                <MyTooltip valueFormatFn={(value) => `${value}/100`} />
-              </Chart>
+                lastMovingAverageDataPoint={lastMovingAverageDataPoint.score}
+                leftAxisLabel="Sleep Score"
+                splineData={weeklyMovingAverageData.sleepScoreData}
+                valueFormatFn={(value) => `${value}/100`}
+              />
             </div>
           </div>
         </TabItem>

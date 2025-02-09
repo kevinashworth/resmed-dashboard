@@ -6,7 +6,7 @@
   import SleepScoreIcon from "./icons/sleep-score.svelte";
   import UsageHoursIcon from "./icons/usage-hours.svelte";
 
-  type IconNames = "events" | "hours" | "leak" | "mask" | "score";
+  import type { IconNames } from "$lib/types";
 
   interface Props {
     name: IconNames;
